@@ -6,31 +6,42 @@ import { Course } from "../Course";
 describe("Course Component", () => {
   const mockCourse = {
     id: 1,
-    title: "React Fundamentals",
-    teacher: "John Doe",
-    duration: 120,
+    name: "React Fundamentals",
+    description: "Aprende React desde cero",
     thumbnail: "https://example.com/thumbnail.jpg",
+    average_rating: 4.5,
+    total_ratings: 2,
   };
 
   it("renders course information correctly", () => {
     render(<Course {...mockCourse} />);
 
-    // Check if title is rendered
-    expect(screen.getByText(mockCourse.title)).toBeDefined();
+    // Check if name is rendered
+    expect(screen.getByText(mockCourse.name)).toBeDefined();
 
-    // Check if teacher information is rendered
-    expect(screen.getByText(`Profesor: ${mockCourse.teacher}`)).toBeDefined();
+    // Check if description is rendered
+    expect(screen.getByText(mockCourse.description)).toBeDefined();
+  });
 
-    // Check if duration is rendered
-    expect(screen.getByText(`Duración: ${mockCourse.duration} minutos`)).toBeDefined();
+  it("renders the course rating", () => {
+    render(<Course {...mockCourse} />);
+
+    expect(screen.getByRole("img", { name: "4.5 de 5 estrellas" })).toBeInTheDocument();
+    expect(screen.getByText("(2 calificaciones)")).toBeInTheDocument();
+  });
+
+  it("renders a placeholder when the course has no ratings", () => {
+    render(<Course {...mockCourse} average_rating={null} total_ratings={0} />);
+
+    expect(screen.getByText("Sin calificaciones")).toBeInTheDocument();
   });
 
   it("renders thumbnail with correct alt text", () => {
     render(<Course {...mockCourse} />);
 
-    const thumbnail = screen.getByRole("img");
+    const thumbnail = screen.getByRole("img", { name: mockCourse.name });
     expect(thumbnail).toHaveAttribute("src", mockCourse.thumbnail);
-    expect(thumbnail).toHaveAttribute("alt", mockCourse.title);
+    expect(thumbnail).toHaveAttribute("alt", mockCourse.name);
   });
 
   it("renders with correct structure", () => {

@@ -1,0 +1,36 @@
+.starRating {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stars {
+  display: inline-flex;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.star {
+  position: relative;
+  color: color('light-gray');
+}
+
+.starFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+  color: color('primary');
+}
+
+.value {
+  font-weight: 700;
+  color: color('text-primary');
+}
+
+.total,
+.empty {
+  color: color('text-secondary');
+  font-size: 0.95rem;
+  opacity: 0.7;
+}

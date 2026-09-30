@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
-import { CourseDetail } from "@/types";
+import { CourseDetail, Rating } from "@/types";
 import { CourseDetailComponent } from "@/components/CourseDetail/CourseDetail";
+import { DEMO_USER_ID } from "@/lib/demoUser";
 
 interface CoursePageProps {
-  params: {
+  params: Promise<{
     slug: string;
-  };
+  }>;
 }
 
 async function getCourseData(slug: string): Promise<CourseDetail> {
@@ -24,17 +25,34 @@ async function getCourseData(slug: string): Promise<CourseDetail> {
   return response.json();
 }
 
-export default async function CoursePage({ params }: CoursePageProps) {
-  const courseData = await getCourseData(params.slug);
+// Returns null when the user hasn't rated the course (API responds 404)
+async function getUserRating(courseId: number): Promise<number | null> {
+  const response = await fetch(`http://localhost:8000/courses/${courseId}/ratings/user/${DEMO_USER_ID}`, {
+    cache: "no-store",
+  });
 
-  return <CourseDetailComponent course={courseData} />;
+  if (!response.ok) {
+    return null;
+  }
+
+  const rating: Rating = await response.json();
+  return rating.rating;
+}
+
+export default async function CoursePage({ params }: CoursePageProps) {
+  const { slug } = await params;
+  const courseData = await getCourseData(slug);
+  const userRating = await getUserRating(courseData.id);
+
+  return <CourseDetailComponent course={courseData} userRating={userRating} />;
 }
 
 export async function generateMetadata({ params }: CoursePageProps) {
-  const courseData = await getCourseData(params.slug);
+  const { slug } = await params;
+  const courseData = await getCourseData(slug);
 
   return {
-    title: `${courseData.title} - Curso Online`,
+    title: `${courseData.name} - Curso Online`,
     description: courseData.description,
   };
 }

@@ -18,7 +18,8 @@ Python 3.11 · FastAPI · SQLAlchemy 2 · Alembic · uv · Docker Compose
 - `BaseModel` (`models/base.py`): `id`, `created_at`, `updated_at`, `deleted_at` (soft delete: filtrar siempre `deleted_at IS NULL`).
 - Tablas: `courses`, `teachers`, `lessons`, `course_teachers` (N:M). Nuevos modelos deben importarse en `models/__init__.py` para que Alembic los detecte.
 - Config: `app/core/config.py` (pydantic-settings, `DATABASE_URL`).
-- Endpoints: `GET /`, `GET /health`, `GET /courses`, `GET /courses/{slug}`.
+- Endpoints: `GET /`, `GET /health`, `GET /courses`, `GET /courses/{slug}`, ratings (`POST /courses/{course_id}/ratings`, `GET|DELETE /courses/{course_id}/ratings/user/{user_id}`).
+- Ratings (`course_ratings`): un rating activo por usuario/curso vía índice único parcial `WHERE deleted_at IS NULL`; el CHECK 1–5 y ese índice no los detecta el autogenerate de Alembic (escribirlos a mano). Sin auth: el Frontend usa `DEMO_USER_ID` (`src/lib/demoUser.ts`).
 
 Comandos (desde `Backend/`):
 ```
@@ -60,8 +61,9 @@ Ambas apps usan Clean Architecture: `Data` (DTO → Mapper → Repository) / `Do
 - Código y comentarios en inglés; textos de UI y documentación en español.
 
 ## Deuda conocida (verificar antes de asumir que sigue vigente)
-1. Frontend desalineado con el contrato: espera `data.data` en `/courses` (backend devuelve lista plana) y campos `title/teacher/duration/video` en vez de `name/teacher_id/video_url`.
+1. `yarn build` falla por `/classes/[class_id]` (params síncronos en Next 15 + import sin usar en su test) y `VideoPlayer.test.tsx` tiene errores de tipos. El tipo `Class` aún usa `title/video/duration`.
 2. Frontend llama a `/classes/{id}`, que no existe; el contrato define `GET /courses/:slug/classes/:id`, aún no implementado.
+6. `httpx` falta en las deps dev del Backend: los tests solo corren con `uv run --with httpx --with pytest pytest app/test_main.py`.
 3. `Backend/app/models/class.py` duplica `Lesson` y referencia `Course.classes` (inexistente); no se importa. No usarlo.
 4. Base URLs hardcodeadas en los 3 clientes (iOS `localhost` solo sirve en simulador; Android `10.0.2.2` solo en emulador).
 5. Credenciales de Postgres en claro en `docker-compose.yml`.
