@@ -12,8 +12,6 @@ PostgreSQL 15 ◄── Backend FastAPI (:8000) ◄── Frontend Next.js (SSR,
 - Sin autenticación, sin CORS (el Frontend hace fetch server-side).
 
 ## Backend — `Backend/`
-Python 3.11 · FastAPI · SQLAlchemy 2 · Alembic · uv · Docker Compose
-
 - Capas: `app/main.py` (rutas + DI con `Depends`) → `app/services/course_service.py` (lógica, arma dicts de respuesta) → `app/models/` (ORM) → `app/db/base.py` (engine, `get_db`).
 - `BaseModel` (`models/base.py`): `id`, `created_at`, `updated_at`, `deleted_at` (soft delete: filtrar siempre `deleted_at IS NULL`).
 - Tablas: `courses`, `teachers`, `lessons`, `course_teachers` (N:M). Nuevos modelos deben importarse en `models/__init__.py` para que Alembic los detecte.
@@ -27,43 +25,32 @@ make start | stop | logs | build
 make migrate                 # alembic upgrade head
 make create-migration        # autogenerate
 make seed | seed-fresh
-docker-compose exec api bash -c "cd /app && uv run pytest app/test_main.py -v"
+make test                    # unit + integration (= docker compose exec api bash -c "cd /app && uv run pytest app -v")
 ```
-Tests: `app/test_main.py` mockea `CourseService` y valida campos contra el contrato.
+Tests: `app/test_main.py` mockea los servicios y valida campos contra el contrato. `app/tests/` son de integración contra la base `platziflix_test` (mismo contenedor `db`; el fixture la crea y migra con Alembic, rollback por test; `TEST_DATABASE_URL` debe terminar en `_test` o aborta). Ojo: `app/alembic.ini` apunta fijo a `platziflix_db`.
+- Cambiar `pyproject.toml`/`uv.lock` exige `docker compose build api` (no están montados en el contenedor).
+- Host Windows: sin `make`, `uv` ni Node; `docker` en `C:\Program Files\Docker\Docker\resources\bin` (usar `docker compose ...` directo).
 
 ## Frontend — `Frontend/`
-Next.js 15 (App Router, Turbopack) · React 19 · TypeScript · SCSS Modules · Vitest + Testing Library · yarn
-
 - Server Components con `fetch(..., { cache: "no-store" })` directo en cada `page.tsx` (URL `http://localhost:8000` hardcodeada, sin capa de API).
 - Rutas: `/` (lista), `/course/[slug]` (detalle + loading/error/not-found), `/classes/[class_id]` (VideoPlayer).
 - Componentes en `src/components/<Nombre>/<Nombre>.tsx` + `.module.scss` + test al lado. Tipos en `src/types/index.ts`. Alias `@/` → `src/`.
 - `vars.scss` se inyecta globalmente vía `next.config.ts` (no importarlo manualmente).
 
-Comandos: `yarn dev` · `yarn build` · `yarn lint` · `yarn test`
+Tests: en Docker/CI usar `yarn test --run` (sin `--run` queda en watch). Sin Node en el host: ver `Frontend/CLAUDE.md`.
 
 ## Mobile — `Mobile/`
-Ambas apps usan Clean Architecture: `Data` (DTO → Mapper → Repository) / `Domain` (modelos + interfaz repo) / `Presentation` (ViewModel + UI). Guías en `.cursor/context/` de cada app.
-
-**Android** `Mobile/PlatziFlixAndroid/` — Kotlin · Jetpack Compose · Material3 · Retrofit/OkHttp/Gson · Coil · Coroutines
-- MVI: `StateFlow<UiState>` + `handleEvent(UiEvent)`.
-- DI manual en `di/AppModule.kt` (`USE_MOCK_DATA` alterna `MockCourseRepository`/`RemoteCourseRepository`).
-- Base URL en `data/network/NetworkModule.kt`. Build/test: `./gradlew assembleDebug`, `./gradlew test`.
-- Feature actual: solo lista de cursos.
-
-**iOS** `Mobile/PlatziFlixiOS/` — Swift · SwiftUI · async/await · URLSession
-- MVVM: `@MainActor ObservableObject` + `@Published`; DI por inicializador.
-- Red: `Services/NetworkManager` + protocolo `APIEndpoint`; endpoints en `Data/Repositories/CourseAPIEndpoints.swift`.
-- Feature actual: lista + búsqueda local; navegación a detalle es TODO. Se abre con Xcode.
+Android (Kotlin/Compose, MVI) e iOS (SwiftUI, MVVM), ambas con Clean Architecture. Detalles en `Mobile/CLAUDE.md`.
 
 ## Convenciones
 - JSON en snake_case; los clientes mapean a camelCase en DTOs (`teacher_id` → `teacherIds`/`teacherId`).
 - Mantener la separación de capas en cada proyecto; no llamar a la red desde vistas en mobile.
 - Código y comentarios en inglés; textos de UI y documentación en español.
+- Planes de implementación en `spec/` (raíz) como `NN_nombre_del_spec.md`, numeración incremental desde `00`, con el formato del agente `architect` (`.claude/agents/architect.md`).
 
 ## Deuda conocida (verificar antes de asumir que sigue vigente)
-1. `yarn build` falla por `/classes/[class_id]` (params síncronos en Next 15 + import sin usar en su test) y `VideoPlayer.test.tsx` tiene errores de tipos. El tipo `Class` aún usa `title/video/duration`.
-2. Frontend llama a `/classes/{id}`, que no existe; el contrato define `GET /courses/:slug/classes/:id`, aún no implementado.
-6. `httpx` falta en las deps dev del Backend: los tests solo corren con `uv run --with httpx --with pytest pytest app/test_main.py`.
-3. `Backend/app/models/class.py` duplica `Lesson` y referencia `Course.classes` (inexistente); no se importa. No usarlo.
-4. Base URLs hardcodeadas en los 3 clientes (iOS `localhost` solo sirve en simulador; Android `10.0.2.2` solo en emulador).
-5. Credenciales de Postgres en claro en `docker-compose.yml`.
+1. `/classes/[class_id]` compila pero falla en runtime: llama a `/classes/{id}` (no existe; el contrato define `GET /courses/:slug/classes/:id`, sin implementar), su link vuelve a `/course` (no existe) y el tipo `Class` aún usa `title/video/duration`.
+2. `Backend/app/models/class.py` duplica `Lesson` y referencia `Course.classes` (inexistente); no se importa. No usarlo.
+3. Base URLs hardcodeadas en los 3 clientes (iOS `localhost` solo sirve en simulador; Android `10.0.2.2` solo en emulador).
+4. Credenciales de Postgres en claro en `docker-compose.yml`.
+5. Ratings sin autenticación (cualquier cliente vota/borra como cualquier `user_id`). Hallazgos de seguridad y su estado en `spec/03_hallazgos_seguridad_ratings.md`.

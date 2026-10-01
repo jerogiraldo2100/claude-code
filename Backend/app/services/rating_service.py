@@ -49,6 +49,9 @@ class RatingService:
             # A concurrent request created the rating first: update that one instead
             self.db.rollback()
             existing = self._get_active_rating(course_id, user_id)
+            if existing is None:
+                # Not a duplicate (e.g. FK or CHECK violation): surface the original error
+                raise
             existing.rating = rating
             self.db.commit()
             self.db.refresh(existing)

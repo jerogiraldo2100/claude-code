@@ -355,6 +355,13 @@ class TestRatingsEndpoints:
         assert response.status_code == 422
         mock_rating_service.upsert_rating.assert_not_called()
 
+    @pytest.mark.parametrize("invalid_user_id", [0, 2_147_483_648, 3_000_000_000])
+    def test_out_of_range_user_id_returns_422(self, rating_client, mock_rating_service, invalid_user_id):
+        response = rating_client.post("/courses/1/ratings", json={"user_id": invalid_user_id, "rating": 5})
+
+        assert response.status_code == 422
+        mock_rating_service.upsert_rating.assert_not_called()
+
     def test_missing_user_id_returns_422(self, rating_client, mock_rating_service):
         response = rating_client.post("/courses/1/ratings", json={"rating": 5})
 
