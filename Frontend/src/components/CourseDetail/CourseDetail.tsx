@@ -1,21 +1,16 @@
 import { FC } from "react";
 import Link from "next/link";
 import { CourseDetail } from "@/types";
+import { StarRating } from "@/components/StarRating/StarRating";
+import { RatingInput } from "@/components/RatingInput/RatingInput";
 import styles from "./CourseDetail.module.scss";
 
 interface CourseDetailComponentProps {
   course: CourseDetail;
+  userRating: number | null;
 }
 
-export const CourseDetailComponent: FC<CourseDetailComponentProps> = ({ course }) => {
-  const formatDuration = (duration: number) => {
-    const hours = Math.floor(duration / 3600);
-    const minutes = Math.floor((duration % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  };
-
-  const totalDuration = course.classes.reduce((acc, cls) => acc + cls.duration, 0);
-
+export const CourseDetailComponent: FC<CourseDetailComponentProps> = ({ course, userRating }) => {
   return (
     <div className={styles.container}>
       <div className={styles.navigation}>
@@ -25,15 +20,18 @@ export const CourseDetailComponent: FC<CourseDetailComponentProps> = ({ course }
       </div>
       <div className={styles.header}>
         <div className={styles.thumbnailContainer}>
-          <img src={course.thumbnail} alt={course.title} className={styles.thumbnail} />
+          <img src={course.thumbnail} alt={course.name} className={styles.thumbnail} />
         </div>
         <div className={styles.courseInfo}>
-          <h1 className={styles.title}>{course.title}</h1>
-          <p className={styles.teacher}>Por {course.teacher}</p>
+          <h1 className={styles.title}>{course.name}</h1>
+          <StarRating value={course.average_rating} total={course.total_ratings} />
           <p className={styles.description}>{course.description}</p>
           <div className={styles.stats}>
-            <span className={styles.duration}>Duración total: {formatDuration(totalDuration)}</span>
             <span className={styles.classCount}>{course.classes.length} clases</span>
+          </div>
+          <div className={styles.rateSection}>
+            <h2 className={styles.rateTitle}>Califica este curso</h2>
+            <RatingInput courseId={course.id} slug={course.slug} initialRating={userRating} />
           </div>
         </div>
       </div>
@@ -42,12 +40,11 @@ export const CourseDetailComponent: FC<CourseDetailComponentProps> = ({ course }
         <h2 className={styles.sectionTitle}>Contenido del curso</h2>
         <div className={styles.classesList}>
           {course.classes.map((cls, index) => (
-            <Link href={`/classes/${cls.id}`} key={cls.id} className={styles.classItem}>
+            <Link href={`/course/${course.slug}/classes/${cls.id}`} key={cls.id} className={styles.classItem}>
               <div className={styles.classNumber}>{(index + 1).toString().padStart(2, "0")}</div>
               <div className={styles.classInfo}>
-                <h3 className={styles.classTitle}>{cls.title}</h3>
+                <h3 className={styles.classTitle}>{cls.name}</h3>
                 <p className={styles.classDescription}>{cls.description}</p>
-                <span className={styles.classDuration}>{formatDuration(cls.duration)}</span>
               </div>
             </Link>
           ))}

@@ -200,3 +200,15 @@
   font-weight: 600;
   align-self: flex-start;
 }
+.rateSection {
+  margin-top: 1rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid color('light-gray');
+}
+
+.rateTitle {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: color('text-primary');
+  margin-bottom: 0.5rem;
+}

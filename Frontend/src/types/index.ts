@@ -1,29 +1,48 @@
-// Course types
+// Course types (GET /courses, see Backend/specs/00_contracts.md)
 export interface Course {
   id: number;
   name: string;
   description: string;
   thumbnail: string;
   slug: string;
-  // Campos opcionales de rating
-  average_rating?: number; // 0.0 - 5.0
-  total_ratings?: number; // Cantidad de ratings
+  average_rating: number | null; // null when the course has no ratings
+  total_ratings: number;
 }
 
-// Class types
-export interface Class {
+// Class summary as returned inside GET /courses/:slug
+export interface ClassSummary {
   id: number;
-  title: string;
+  name: string;
   description: string;
-  video: string;
-  duration: number;
   slug: string;
 }
 
-// Course Detail type
-export interface CourseDetail extends Course {
+// Class as returned by GET /courses/:slug/classes/:id
+export interface Class {
+  id: number;
+  name: string;
   description: string;
-  classes: Class[];
+  slug: string;
+  video_url: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+// Course Detail type (GET /courses/:slug)
+export interface CourseDetail extends Course {
+  teacher_id: number[];
+  classes: ClassSummary[];
+}
+
+// Rating types (POST /courses/:course_id/ratings)
+export interface Rating {
+  id: number;
+  course_id: number;
+  user_id: number;
+  rating: number; // 1 to 5
+  created_at: string;
+  updated_at: string;
 }
 
 // Progress types

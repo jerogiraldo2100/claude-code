@@ -1,8 +1,9 @@
 import pytest
 from unittest.mock import Mock
 from fastapi.testclient import TestClient
-from app.main import app, get_course_service
+from app.main import app, get_course_service, get_rating_service
 from app.services.course_service import CourseService
+from app.services.rating_service import RatingService
 
 
 # Mock data according to the contracts
@@ -12,14 +13,18 @@ MOCK_COURSES_LIST = [
         "name": "Curso de React",
         "description": "Aprende React desde cero",
         "thumbnail": "https://via.placeholder.com/150",
-        "slug": "curso-de-react"
+        "slug": "curso-de-react",
+        "average_rating": 4.5,
+        "total_ratings": 2
     },
     {
         "id": 2,
         "name": "Curso de Python",
         "description": "Domina Python paso a paso",
         "thumbnail": "https://via.placeholder.com/200",
-        "slug": "curso-de-python"
+        "slug": "curso-de-python",
+        "average_rating": None,
+        "total_ratings": 0
     }
 ]
 
@@ -30,6 +35,8 @@ MOCK_COURSE_DETAIL = {
     "thumbnail": "https://via.placeholder.com/150",
     "slug": "curso-de-react",
     "teacher_id": [1, 2],
+    "average_rating": 4.5,
+    "total_ratings": 2,
     "classes": [
         {
             "id": 1,
@@ -208,6 +215,34 @@ class TestCoursesEndpoints:
         assert response.json() == {"detail": "Course not found"}
         
         mock_course_service.get_course_by_slug.assert_called_once_with("nonexistent-course")
+
+    def test_get_course_class_contract_fields(self, client, mock_course_service):
+        """Test GET /courses/{slug}/classes/{class_id} returns the contract fields"""
+        mock_course_service.get_class_by_course_slug.return_value = {
+            "id": 1,
+            "name": "Introducción a React",
+            "description": "Conceptos básicos de React",
+            "slug": "introduccion-a-react",
+            "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "created_at": "2026-01-01T00:00:00",
+            "updated_at": "2026-01-01T00:00:00",
+            "deleted_at": None,
+        }
+
+        response = client.get("/courses/curso-de-react/classes/1")
+        assert response.status_code == 200
+        assert set(response.json().keys()) == {
+            "id", "name", "description", "slug", "video_url", "created_at", "updated_at", "deleted_at"
+        }
+        mock_course_service.get_class_by_course_slug.assert_called_once_with("curso-de-react", 1)
+
+    def test_get_course_class_not_found(self, client, mock_course_service):
+        """Test GET /courses/{slug}/classes/{class_id} when the class doesn't exist"""
+        mock_course_service.get_class_by_course_slug.return_value = None
+
+        response = client.get("/courses/curso-de-react/classes/999")
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Class not found"}
     
     def test_get_course_by_slug_with_special_characters(self, client, mock_course_service):
         """Test GET /courses/{slug} with special characters in slug"""
@@ -229,7 +264,7 @@ class TestContractCompliance:
         response = client.get("/courses")
         data = response.json()
         
-        expected_fields = {"id", "name", "description", "thumbnail", "slug"}
+        expected_fields = {"id", "name", "description", "thumbnail", "slug", "average_rating", "total_ratings"}
         
         for course in data:
             # Verify no extra fields beyond contract
@@ -244,7 +279,9 @@ class TestContractCompliance:
         data = response.json()
         
         # Verify main course fields
-        expected_course_fields = {"id", "name", "description", "thumbnail", "slug", "teacher_id", "classes"}
+        expected_course_fields = {
+            "id", "name", "description", "thumbnail", "slug", "teacher_id", "average_rating", "total_ratings", "classes"
+        }
         actual_course_fields = set(data.keys())
         assert actual_course_fields == expected_course_fields
         
@@ -262,7 +299,9 @@ class TestContractCompliance:
                 "name": "Curso de React",
                 "description": "Curso de React",
                 "thumbnail": "https://via.placeholder.com/150",
-                "slug": "curso-de-react"
+                "slug": "curso-de-react",
+                "average_rating": 4.5,
+                "total_ratings": 2
             }
         ]
         
@@ -276,4 +315,123 @@ class TestContractCompliance:
         assert course["name"] == "Curso de React"
         assert course["description"] == "Curso de React"
         assert course["thumbnail"] == "https://via.placeholder.com/150"
-        assert course["slug"] == "curso-de-react" 
+        assert course["slug"] == "curso-de-react"
+        assert course["average_rating"] == 4.5
+        assert course["total_ratings"] == 2
+
+    def test_course_without_ratings_has_null_average(self, client, mock_course_service):
+        """Courses without ratings return average_rating null and total_ratings 0"""
+        mock_course_service.get_all_courses.return_value = MOCK_COURSES_LIST
+
+        response = client.get("/courses")
+        course = response.json()[1]
+
+        assert course["average_rating"] is None
+        assert course["total_ratings"] == 0
+
+
+MOCK_RATING = {
+    "id": 1,
+    "course_id": 1,
+    "user_id": 1,
+    "rating": 5,
+    "created_at": "2026-09-30T12:00:00",
+    "updated_at": "2026-09-30T12:00:00"
+}
+
+
+@pytest.fixture
+def mock_rating_service():
+    """Create a mock RatingService for testing"""
+    service = Mock(spec=RatingService)
+    service.course_exists.return_value = True
+    return service
+
+
+@pytest.fixture
+def rating_client(mock_rating_service):
+    """Create test client with mocked RatingService dependency"""
+    app.dependency_overrides[get_rating_service] = lambda: mock_rating_service
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+class TestRatingsEndpoints:
+    """Tests for course rating endpoints"""
+
+    def test_create_rating_returns_201(self, rating_client, mock_rating_service):
+        mock_rating_service.upsert_rating.return_value = (MOCK_RATING, True)
+
+        response = rating_client.post("/courses/1/ratings", json={"user_id": 1, "rating": 5})
+
+        assert response.status_code == 201
+        assert set(response.json().keys()) == {"id", "course_id", "user_id", "rating", "created_at", "updated_at"}
+        mock_rating_service.upsert_rating.assert_called_once_with(1, 1, 5)
+
+    def test_update_existing_rating_returns_200(self, rating_client, mock_rating_service):
+        mock_rating_service.upsert_rating.return_value = ({**MOCK_RATING, "rating": 3}, False)
+
+        response = rating_client.post("/courses/1/ratings", json={"user_id": 1, "rating": 3})
+
+        assert response.status_code == 200
+        assert response.json()["rating"] == 3
+
+    @pytest.mark.parametrize("invalid_rating", [0, 6, -1, 4.5, "5", None])
+    def test_invalid_rating_returns_422(self, rating_client, mock_rating_service, invalid_rating):
+        response = rating_client.post("/courses/1/ratings", json={"user_id": 1, "rating": invalid_rating})
+
+        assert response.status_code == 422
+        mock_rating_service.upsert_rating.assert_not_called()
+
+    @pytest.mark.parametrize("invalid_user_id", [0, 2_147_483_648, 3_000_000_000])
+    def test_out_of_range_user_id_returns_422(self, rating_client, mock_rating_service, invalid_user_id):
+        response = rating_client.post("/courses/1/ratings", json={"user_id": invalid_user_id, "rating": 5})
+
+        assert response.status_code == 422
+        mock_rating_service.upsert_rating.assert_not_called()
+
+    def test_missing_user_id_returns_422(self, rating_client, mock_rating_service):
+        response = rating_client.post("/courses/1/ratings", json={"rating": 5})
+
+        assert response.status_code == 422
+
+    def test_rate_nonexistent_course_returns_404(self, rating_client, mock_rating_service):
+        mock_rating_service.course_exists.return_value = False
+
+        response = rating_client.post("/courses/999/ratings", json={"user_id": 1, "rating": 5})
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Course not found"}
+        mock_rating_service.upsert_rating.assert_not_called()
+
+    def test_get_user_rating_success(self, rating_client, mock_rating_service):
+        mock_rating_service.get_user_rating.return_value = MOCK_RATING
+
+        response = rating_client.get("/courses/1/ratings/user/1")
+
+        assert response.status_code == 200
+        assert response.json()["rating"] == 5
+        mock_rating_service.get_user_rating.assert_called_once_with(1, 1)
+
+    def test_get_user_rating_not_found(self, rating_client, mock_rating_service):
+        mock_rating_service.get_user_rating.return_value = None
+
+        response = rating_client.get("/courses/1/ratings/user/2")
+
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Rating not found"}
+
+    def test_delete_user_rating_returns_204(self, rating_client, mock_rating_service):
+        mock_rating_service.delete_user_rating.return_value = True
+
+        response = rating_client.delete("/courses/1/ratings/user/1")
+
+        assert response.status_code == 204
+        assert response.content == b""
+
+    def test_delete_missing_rating_returns_404(self, rating_client, mock_rating_service):
+        mock_rating_service.delete_user_rating.return_value = False
+
+        response = rating_client.delete("/courses/1/ratings/user/1")
+
+        assert response.status_code == 404

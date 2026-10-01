@@ -6,7 +6,7 @@ This script creates sample data for testing and development.
 from datetime import datetime
 from sqlalchemy.orm import Session
 from app.db.base import SessionLocal
-from app.models import Teacher, Course, Lesson, course_teachers
+from app.models import Teacher, Course, Lesson, course_teachers, CourseRating
 from app.core.config import settings
 
 
@@ -144,10 +144,33 @@ def create_sample_data():
 
         db.commit()
 
+        # Create sample ratings (course3 is left without ratings on purpose)
+        ratings_data = [
+            {"course": course1, "user_id": 1, "rating": 5},
+            {"course": course1, "user_id": 2, "rating": 4},
+            {"course": course1, "user_id": 3, "rating": 5},
+            {"course": course2, "user_id": 1, "rating": 4},
+            {"course": course2, "user_id": 2, "rating": 3},
+        ]
+
+        for rating_data in ratings_data:
+            db.add(
+                CourseRating(
+                    course_id=rating_data["course"].id,
+                    user_id=rating_data["user_id"],
+                    rating=rating_data["rating"],
+                    created_at=datetime.utcnow(),
+                    updated_at=datetime.utcnow(),
+                )
+            )
+
+        db.commit()
+
         print("✅ Sample data created successfully!")
         print(f"   - Created {len([teacher1, teacher2, teacher3])} teachers")
         print(f"   - Created {len([course1, course2, course3])} courses")
         print(f"   - Created {len(lessons_data)} lessons")
+        print(f"   - Created {len(ratings_data)} ratings")
 
     except Exception as e:
         db.rollback()
@@ -163,6 +186,7 @@ def clear_all_data():
 
     try:
         # Delete in reverse order to avoid foreign key constraints
+        db.query(CourseRating).delete()
         db.query(Lesson).delete()
         db.execute(course_teachers.delete())
         db.query(Course).delete()
