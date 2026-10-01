@@ -49,7 +49,6 @@ Android (Kotlin/Compose, MVI) e iOS (SwiftUI, MVVM), ambas con Clean Architectur
 - Planes de implementación en `spec/` (raíz) como `NN_nombre_del_spec.md`, numeración incremental desde `00`, con el formato del agente `architect` (`.claude/agents/architect.md`).
 
 ## Deuda conocida (verificar antes de asumir que sigue vigente)
-1. `Backend/app/models/class.py` duplica `Lesson` y referencia `Course.classes` (inexistente); no se importa. No usarlo.
-2. Base URLs hardcodeadas en los 3 clientes (iOS `localhost` solo sirve en simulador; Android `10.0.2.2` solo en emulador).
-3. Credenciales de Postgres en claro en `docker-compose.yml`.
-4. Ratings sin autenticación (cualquier cliente vota/borra como cualquier `user_id`). Hallazgos de seguridad y su estado en `spec/03_hallazgos_seguridad_ratings.md`.
+1. Base URLs hardcodeadas en los 3 clientes (iOS `localhost` solo sirve en simulador; Android `10.0.2.2` solo en emulador).
+2. Credenciales de Postgres en claro en `docker-compose.yml`.
+3. Ratings sin autenticación (cualquier cliente vota/borra como cualquier `user_id`). Hallazgos de seguridad y su estado en `spec/03_hallazgos_seguridad_ratings.md`.
