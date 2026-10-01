@@ -96,7 +96,7 @@ D1 = no, D3 = arreglo mínimo, D5 = opción A. Se conserva abajo el razonamiento
   - Si `next build` intenta prerenderizar `/` y llamar a `localhost:8000`, fallaría sin backend alcanzable. No debería (usa `no-store`), pero no está verificado: si pasa, correr el build con `--network container:backend-api-1`.
   - Los warnings `no-img-element` no bloquean; no se corrigen aquí.
 
-### F5: Verificación manual en el navegador ⏳ en curso: F5.1 ✅, F5.2 ⏳ (usuario) (= Fase 10 del spec 00)
+### F5: Verificación manual en el navegador ✅ completada: F5.1 ✅, F5.2 ✅ (= Fase 10 del spec 00)
 - **Objetivo**: probar los clics reales del flujo de ratings desde el navegador del host.
 - **Dependencias**: Backend levantado con datos (`make start`, `make migrate`, `make seed-fresh`; hoy `backend-api-1` publica `8000` y `backend-db-1` publica `5432`). F4 para probar sobre el build de producción; se puede adelantar con `yarn dev`. Decisión D5.
 
@@ -125,7 +125,7 @@ El problema: el servidor Next (SSR y Server Action) necesita alcanzar `localhost
 - **Criterio de terminado**: `http://localhost:3000/` abre en el navegador del host y muestra cursos con datos del seed.
 - **Riesgos**: con la opción A/B, `make stop` corta la API; el sidecar queda vivo y reenvía a un puerto cerrado (lo que F5.2 caso 4 necesita). Hot reload de `yarn dev` sobre un bind mount de Windows puede no detectar cambios; no importa para esta verificación.
 
-#### F5.2: Checklist de verificación ⏳ pendiente (la hace el usuario en `http://localhost:3000`)
+#### F5.2: Checklist de verificación ✅ completada (Playwright + Chrome, 2026-10-01)
 Registrar cada punto como OK/KO en la descripción del PR (capturas opcionales):
 1. `/`: cada curso muestra estrellas y conteo; el curso sin votos del seed (course3) muestra el estado vacío en español.
 2. `/course/{slug}`: clic en 4 estrellas → feedback optimista inmediato; tras la revalidación cambian promedio y conteo; al recargar, el voto (4) sigue seleccionado.
@@ -135,6 +135,17 @@ Registrar cada punto como OK/KO en la descripción del PR (capturas opcionales):
 6. Consola del navegador sin errores de hidratación ni de red hacia `:8000` (confirma que el navegador nunca llama a la API directo).
 7. Volver a `/`: el promedio del curso votado refleja el cambio (`no-store`, sin revalidación explícita).
 - **Criterio de terminado**: 7/7 OK registrados.
+- **Evidencia (2026-10-01)**: script con la librería Playwright 1.63 sobre Chrome del host (`http://localhost:3000`, `yarn dev` de F5.1), curso `curso-de-python`, partiendo sin voto del usuario demo (`DELETE /courses/2/ratings/user/1`). Capturas en [`spec/capturas_f52/`](capturas_f52/). **7/7 OK**:
+  1. OK: 2 cursos con estrellas y conteo; JavaScript muestra "Sin calificaciones" (`01_home.png`).
+  2. OK: clic en 4 → `aria-pressed` inmediato (optimista); conteo 1→2 y promedio 3.0→3.5; tras recargar el 4 sigue seleccionado (`02`–`04`).
+  3. OK: re-voto 2 → conteo 2→2, promedio 3.5→2.5 (`05_revoto_2.png`).
+  4. OK: con `docker compose stop api` y la página cargada, votar 5 muestra "No se pudo conectar con el servidor" en ~1 s y la selección vuelve al 4; luego `docker compose start api` y `/health` OK (`07_api_apagada.png`). Se paró solo `api` en vez de `make stop` (efecto equivalente para el Frontend, sin bajar la base).
+  5. OK: `Tab` desde la estrella 1 llega a "Calificar con 4 estrellas" y `Enter` vota (`aria-pressed` = true) (`06_teclado.png`).
+  6. OK: 0 errores de hidratación o de JS y **0 requests del navegador a `:8000`**. Los únicos recursos fallidos son externos: miniaturas de `via.placeholder.com` (servicio caído, datos del seed) y el embed de YouTube abortado en el Chrome automatizado.
+  7. OK: al volver a `/`, Python muestra el promedio nuevo, 3.5 con 2 votos (`08_home_final.png`).
+  - Extra: `/course/curso-de-python/classes/4` abre "Introducción a Python" con el iframe de YouTube y "Regresar al curso" (`09_clase.png`). En la captura el video sale negro: el embed no cargó en el navegador automatizado, así que la reproducción no quedó verificada.
+- **Re-verificación (2026-10-01, Playwright MCP)**: tras `seed-fresh`, en `curso-de-javascript` (sin votos; en Python el seed ya trae un 4 del usuario demo) clic en 4 → "Sin calificaciones" pasa a 4.0 con 1 calificación (API: `average_rating` 4.0, `total_ratings` 1) y `aria-pressed` en la estrella 4. `/course/curso-de-javascript/classes/12` abre "JavaScript Moderno" y esta vez el iframe de YouTube carga. Consola sin errores de JS; solo fallan las miniaturas de `via.placeholder.com` y `favicon.ico` (404). Capturas en [`spec/capturas_f52/rerun/`](capturas_f52/rerun/) (`01_home` → `04_clase`). Un primer intento se descartó porque otro cliente votaba en paralelo como `user_id = 1`.
+- **Hallazgos nuevos (fuera de alcance)**: las miniaturas del seed apuntan a `via.placeholder.com`, que ya no responde, y las tarjetas muestran la imagen rota.
 - **Riesgos**: el voto del usuario demo persiste entre pruebas; para repetir el caso "primer voto" correr `make seed-fresh` (o `DELETE /courses/{id}/ratings/user/1`, dado D1).
 
 ## 4. Riesgos y casos borde transversales
@@ -148,4 +159,4 @@ Registrar cada punto como OK/KO en la descripción del PR (capturas opcionales):
 - UI para retirar el voto (D1), auth real, base URL configurable, endpoint de clases y migración del tipo `Class`, reemplazar `<img>` por `next/image`, mobile.
 
 ## 6. Orden de ejecución sugerido
-F1–F4 ✅ → D5 ✅ → F5.1 ✅ → F5.2 ⏳ (usuario) → PR `mi-curso` → `main` junto con las fases del Backend.
+F1–F4 ✅ → D5 ✅ → F5.1 ✅ → F5.2 ✅ → PR `mi-curso` → `main` junto con las fases del Backend.

@@ -59,7 +59,7 @@ Los usuarios califican un curso de 1 a 5 estrellas (un rating activo por usuario
 - **Tareas**: tipos alineados al contrato (`name/description`); `StarRating` de solo lectura; `RatingInput` como client component con actualización optimista que restaura el voto anterior si falla; textos de UI en español.
 - **Criterio de terminado**: las páginas renderizan los ratings y la Server Action persiste el voto. Evidencia: Server Action verificada e2e.
 - **Dependencias**: Fase 1 (contrato). Se pudo hacer en paralelo con las fases 2 a 4 usando el contrato como mock.
-- **Riesgos**: `rateCourse` solo revalida `/course/{slug}`. `/` usa `no-store`, así que no queda desactualizado. No se probaron clics en un navegador real (Fase 10).
+- **Riesgos**: `rateCourse` solo revalida `/course/{slug}`. `/` usa `no-store`, así que no queda desactualizado. Clics en navegador real verificados en la Fase 10.
 
 ### Fase 6: Tests del frontend ✅ completada
 - **Objetivo**: cubrir los componentes nuevos y los modificados.
@@ -104,7 +104,7 @@ Los usuarios califican un curso de 1 a 5 estrellas (un rating activo por usuario
 - **Dependencias**: Fase 8 y decisión D2.
 - **Riesgos**: si `conftest.py` usa `create_all` en vez de Alembic, no crea el índice parcial ni valida la migración. Recomiendo `alembic upgrade head` sobre la base de test. La carrera real entre dos transacciones concurrentes es difícil de reproducir de forma determinista. Basta con cubrir la rama de `IntegrityError` forzando el duplicado (caso 5) y un test del reintento con una fila insertada entre la lectura y el insert.
 
-### Fase 10: Verificación manual de punta a punta en el navegador ⏳ pendiente
+### Fase 10: Verificación manual de punta a punta en el navegador ✅ completada (2026-10-01, 7/7 OK; evidencia en `spec/02_plan_frontend_ratings.md` F5.2 y `spec/capturas_f52/`)
 - **Objetivo**: confirmar el flujo real de clics, que nunca se probó.
 - **Archivos**: ninguno (solo verificación). Documentar el resultado en el PR.
 - **Tareas**, con `make start`, `make seed-fresh` y `yarn dev` (o el build de la Fase 7 con `yarn start`):
