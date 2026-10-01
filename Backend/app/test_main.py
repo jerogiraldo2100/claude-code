@@ -215,6 +215,34 @@ class TestCoursesEndpoints:
         assert response.json() == {"detail": "Course not found"}
         
         mock_course_service.get_course_by_slug.assert_called_once_with("nonexistent-course")
+
+    def test_get_course_class_contract_fields(self, client, mock_course_service):
+        """Test GET /courses/{slug}/classes/{class_id} returns the contract fields"""
+        mock_course_service.get_class_by_course_slug.return_value = {
+            "id": 1,
+            "name": "Introducción a React",
+            "description": "Conceptos básicos de React",
+            "slug": "introduccion-a-react",
+            "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+            "created_at": "2026-01-01T00:00:00",
+            "updated_at": "2026-01-01T00:00:00",
+            "deleted_at": None,
+        }
+
+        response = client.get("/courses/curso-de-react/classes/1")
+        assert response.status_code == 200
+        assert set(response.json().keys()) == {
+            "id", "name", "description", "slug", "video_url", "created_at", "updated_at", "deleted_at"
+        }
+        mock_course_service.get_class_by_course_slug.assert_called_once_with("curso-de-react", 1)
+
+    def test_get_course_class_not_found(self, client, mock_course_service):
+        """Test GET /courses/{slug}/classes/{class_id} when the class doesn't exist"""
+        mock_course_service.get_class_by_course_slug.return_value = None
+
+        response = client.get("/courses/curso-de-react/classes/999")
+        assert response.status_code == 404
+        assert response.json() == {"detail": "Class not found"}
     
     def test_get_course_by_slug_with_special_characters(self, client, mock_course_service):
         """Test GET /courses/{slug} with special characters in slug"""

@@ -24,4 +24,10 @@ describe("VideoPlayer", () => {
     render(<VideoPlayer {...mockProps} />);
     expect(screen.getByText(mockProps.title)).toBeInTheDocument();
   });
+
+  it("embeds YouTube links in an iframe", () => {
+    render(<VideoPlayer src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" title="Clase de prueba" />);
+    expect(screen.getByTestId("video-embed")).toHaveAttribute("src", "https://www.youtube.com/embed/dQw4w9WgXcQ");
+    expect(screen.queryByTestId("video-element")).not.toBeInTheDocument();
+  });
 });

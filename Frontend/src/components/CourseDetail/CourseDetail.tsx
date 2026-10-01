@@ -40,7 +40,7 @@ export const CourseDetailComponent: FC<CourseDetailComponentProps> = ({ course, 
         <h2 className={styles.sectionTitle}>Contenido del curso</h2>
         <div className={styles.classesList}>
           {course.classes.map((cls, index) => (
-            <Link href={`/classes/${cls.id}`} key={cls.id} className={styles.classItem}>
+            <Link href={`/course/${course.slug}/classes/${cls.id}`} key={cls.id} className={styles.classItem}>
               <div className={styles.classNumber}>{(index + 1).toString().padStart(2, "0")}</div>
               <div className={styles.classInfo}>
                 <h3 className={styles.classTitle}>{cls.name}</h3>

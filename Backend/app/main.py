@@ -86,6 +86,19 @@ def get_course_by_slug(slug: str, course_service: CourseService = Depends(get_co
     return course
 
 
+@app.get("/courses/{slug}/classes/{class_id}")
+def get_course_class(slug: str, class_id: int, course_service: CourseService = Depends(get_course_service)) -> dict:
+    """
+    Get a single class of a course, including its video URL.
+    """
+    course_class = course_service.get_class_by_course_slug(slug, class_id)
+
+    if not course_class:
+        raise HTTPException(status_code=404, detail="Class not found")
+
+    return course_class
+
+
 @app.post("/courses/{course_id}/ratings")
 def rate_course(
     course_id: int,

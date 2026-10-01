@@ -1,9 +1,12 @@
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import event
 
 from app.db.base import get_db
 from app.main import app
+from app.models import Lesson
 from app.tests.conftest import add_ratings, make_course, make_teacher
 
 
@@ -79,3 +82,21 @@ def test_courses_list_has_no_n_plus_one(client, db_session, db_connection):
 
     assert len(with_two) == len(with_six)
     assert sum("course_ratings" in s for s in with_six) == 1
+
+
+def test_course_class_endpoint(client, db_session):
+    course = make_course(db_session, "api-class")
+    other = make_course(db_session, "api-class-other")
+    lesson = Lesson(course_id=course.id, name="Clase 1", description="Intro", slug="clase-1", video_url="https://example.com/v.mp4")
+    deleted = Lesson(course_id=course.id, name="Old", description="Old", slug="old", video_url="https://example.com/o.mp4", deleted_at=datetime.utcnow())
+    db_session.add_all([lesson, deleted])
+    db_session.commit()
+
+    response = client.get(f"/courses/api-class/classes/{lesson.id}")
+    assert response.status_code == 200
+    assert response.json()["video_url"] == "https://example.com/v.mp4"
+
+    # Class from another course, soft-deleted class and unknown course are all 404
+    assert client.get(f"/courses/{other.slug}/classes/{lesson.id}").status_code == 404
+    assert client.get(f"/courses/api-class/classes/{deleted.id}").status_code == 404
+    assert client.get(f"/courses/missing/classes/{lesson.id}").status_code == 404

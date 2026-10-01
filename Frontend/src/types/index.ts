@@ -17,14 +17,16 @@ export interface ClassSummary {
   slug: string;
 }
 
-// Class types
+// Class as returned by GET /courses/:slug/classes/:id
 export interface Class {
   id: number;
-  title: string;
+  name: string;
   description: string;
-  video: string;
-  duration: number;
   slug: string;
+  video_url: string;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 // Course Detail type (GET /courses/:slug)

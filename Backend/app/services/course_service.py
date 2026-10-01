@@ -83,7 +83,37 @@ class CourseService:
                 for lesson in course.lessons
                 if lesson.deleted_at is None
             ]
-        } 
+        }
+
+    def get_class_by_course_slug(self, slug: str, class_id: int) -> Optional[Dict[str, Any]]:
+        """
+        Get a single class (lesson) of a course, or None if the course or the class doesn't exist.
+        """
+        lesson = (
+            self.db.query(Lesson)
+            .join(Course, Lesson.course_id == Course.id)
+            .filter(
+                Course.slug == slug,
+                Course.deleted_at.is_(None),
+                Lesson.id == class_id,
+                Lesson.deleted_at.is_(None),
+            )
+            .first()
+        )
+
+        if not lesson:
+            return None
+
+        return {
+            "id": lesson.id,
+            "name": lesson.name,
+            "description": lesson.description,
+            "slug": lesson.slug,
+            "video_url": lesson.video_url,
+            "created_at": lesson.created_at.isoformat() if lesson.created_at else None,
+            "updated_at": lesson.updated_at.isoformat() if lesson.updated_at else None,
+            "deleted_at": None,
+        }
 
     def _get_rating_stats(self, course_ids: List[int]) -> Dict[int, Dict[str, Any]]:
         """
