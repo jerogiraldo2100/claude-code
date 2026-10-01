@@ -165,6 +165,6 @@ El `Backend/Dockerfile` **sí instala las deps dev**: línea 15, `RUN uv sync --
 - La verificación manual en navegador (Fase 10 del spec 00) necesita el Backend levantado con `seed-fresh`; no depende de las fases 8 y 9.
 
 ## 6. Orden de ejecución
-Estado: fases 1–4, 8 (8.1–8.4) y 9 (9.1–9.5) ✅; pendientes 8.5 y 9.6 (`CLAUDE.md`).
+Estado: fases 1–4, 8 (8.1–8.5) y 9 (9.1–9.6) ✅.
 
 Fases 1–4 ✅ → **Fase 8** (8.1 → 8.5) → decisión **D2** → **Fase 9** (9.1 → 9.2 ∥ 9.3 ∥ 9.4 → 9.5 → 9.6). D4 se puede decidir en cualquier momento antes de cerrar 9.3.
